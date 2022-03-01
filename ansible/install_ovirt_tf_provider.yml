@@ -1,0 +1,88 @@
+# https://computingforgeeks.com/how-to-install-terraform-ovirt-rhev-plugin/
+# https://github.com/oVirt/terraform-provider-ovirt/tree/main
+# https://computingforgeeks.com/how-to-provision-vms-on-ovirt-rhev-with-terraform/
+- name: install ovirt tf provider
+  hosts: localhost
+  connection: local
+  become: false
+  tasks:
+
+    - name: download installer 
+      get_url:
+        url: https://go.dev/dl/go1.17.7.linux-amd64.tar.gz 
+        dest: "{{ ansible_env.HOME }}/go_latest.tar.gz"
+        mode: '770' 
+
+#    - name: cleanup previous GO 
+#      shell: rm -rf /home/marek/.local/bin/go
+#      ignore_errors: yes
+#      become: true 
+
+    - name: extract archive
+      unarchive:
+        src: "{{ ansible_env.HOME }}/go_latest.tar.gz"
+        dest: "{{ ansible_env.HOME }}/.local/bin"
+
+    - name: create symlink
+      ansible.builtin.file:
+        src:  "{{ ansible_env.HOME }}/.local/bin/go/bin/{{ item }}"
+        dest: "/usr/bin/{{ item }}"
+        state: link
+      loop:
+        - go
+        - gofmt
+      become: true
+#    - name: Add GO repository
+#      ansible.builtin.apt_repository:
+#        repo: ppa:longsleep/golang-backports
+#        state: present
+#      become: true 
+
+#    - name: install GO package
+#      apt:
+#        name: golang-go
+#        update_cache: yes
+#      become: true 
+
+# installer method
+#    - name: Install get GO installer
+#      get_url:
+#        url: https://storage.googleapis.com/golang/getgo/installer_linux
+#        dest: $HOME
+#        mode: '770' 
+
+#    - name: Run GO installer
+#      shell: ./installer_linux 
+#      args:
+#        chdir: $HOME
+#        executable: /bin/bash
+
+
+    - name: Create a directory if it does not exist
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/terraform-providers/terraform-provider-ovirt"
+        state: directory
+        mode: '0755'
+
+    - name: download terraform provider repo
+      git:
+        repo: https://github.com/oVirt/terraform-provider-ovirt.git
+        dest: "{{ ansible_env.HOME }}/terraform-providers/terraform-provider-ovirt"
+    
+
+    - name: build terraform using GO 
+      shell: make build
+      args:
+        chdir: "{{ ansible_env.HOME }}/terraform-providers/terraform-provider-ovirt"
+
+    - name: Create directory for GO terraform plugin 
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/.terraform.d/plugins/local/ovirt/ovirt/0.99.0/linux_amd64/"
+        state: directory
+        mode: '0755'
+
+    - name: copy GO TF bin to plugins dir 
+      ansible.builtin.copy:
+        src: "{{ ansible_env.HOME }}/terraform-providers/terraform-provider-ovirt/terraform-provider-ovirt"  
+        dest: "{{ ansible_env.HOME }}/.terraform.d/plugins/local/ovirt/ovirt/0.99.0/linux_amd64/"
+        mode: '777'

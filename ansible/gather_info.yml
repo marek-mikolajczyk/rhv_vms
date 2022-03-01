@@ -1,0 +1,45 @@
+- name: ovirt ansible collection
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    # Contains encrypted `engine_password` varibale using ansible-vault
+    - passwords.yml
+  tasks:
+    - block:
+        # The use of ovirt.ovirt before ovirt_auth is to check if the collection is correctly loaded
+        - name: Obtain SSO token with using username/password credentials
+          ovirt.ovirt.ovirt_auth:
+            url: https://engine.marekexample.com/ovirt-engine/api
+            username: admin@internal
+            ca_file: ca.pem
+            password: "{{ ovirt_password }}"
+
+        # Previous task generated I(ovirt_auth) fact, which you can later use
+        # in different modules as follows:
+
+        - ovirt.ovirt.ovirt_vm_info:  
+             auth: "{{ ovirt_auth }}"  
+             pattern: name={{ myvm }}
+          register: result_vms  
+  
+        - ansible.builtin.debug:  
+             msg: "{{ result_vms.ovirt_vms }}"  
+  
+        - ovirt.ovirt.ovirt_nic_info:  
+             auth: "{{ ovirt_auth }}"  
+             vm: "{{ myvm }}"
+             name: nic*  
+          register: result_nic  
+  
+        - ansible.builtin.debug:  
+             msg: "{{ result_nic }}"
+
+
+      always:
+        - name: Always revoke the SSO token
+          ovirt_auth:
+            state: absent
+            ovirt_auth: "{{ ovirt_auth }}"
+  collections:
+    - ovirt.ovirt
