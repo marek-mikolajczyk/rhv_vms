@@ -10,7 +10,7 @@ This file normally would not be present in the repo, but in Hashi vault and from
 then go to /terraform and use run.sh to initialize the backend.
 
 
-# state
+# State
 
 State is kept in onprem Gitlab installation
 
